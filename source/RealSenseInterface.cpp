@@ -75,20 +75,22 @@ void CRealSenseInterface::connect()
 	//cout << "height = " << aaa.height << endl;
 	//cout << "width = " << aaa.width << endl;
 
-
-	M_frame0 = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3, cv::Mat::AUTO_STEP);
-	//M_frame1_changed = new cv::Mat(cv::Size(width_color, height_color), CV_8UC3, cv::Mat::AUTO_STEP);
-	//M_frame2 = new cv::Mat(cv::Size(width_depth, height_depth), CV_8UC3, cv::Mat::AUTO_STEP);
-	M_frame1 = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3, cv::Mat::AUTO_STEP);
-	M_frame2 = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1, cv::Mat::AUTO_STEP);
-	M_frame3 = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1, cv::Mat::AUTO_STEP);
-
 	M_p_img_color = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3, cv::Mat::AUTO_STEP);
 	//M_p_img_depth = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3, cv::Mat::AUTO_STEP);
-	M_p_img_depth = new cv::Mat(cv::Size(M_width_color, M_width_color), CV_8UC3, cv::Mat::AUTO_STEP);
+	M_p_img_depth = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1, cv::Mat::AUTO_STEP);
+	M_p_img_depth_show = new cv::Mat(cv::Size(M_width_color, M_width_color), CV_8UC3, cv::Mat::AUTO_STEP);
+	//M_p_img_depth_show = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3, cv::Scalar(255, 255, 255));
+
 	M_p_img_ir_left = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1, cv::Mat::AUTO_STEP);
 	M_p_img_ir_right = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1, cv::Mat::AUTO_STEP);
 	M_p_img_temp_8UC3 = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3, cv::Mat::AUTO_STEP);
+
+	M_p_img_color_showonly = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1, cv::Mat::AUTO_STEP);
+	M_p_img_depth_showonly = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1, cv::Mat::AUTO_STEP);
+	M_p_img_depth_show_showonly = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1, cv::Mat::AUTO_STEP);
+	M_p_img_ir_left_showonly = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1, cv::Mat::AUTO_STEP);
+	M_p_img_ir_right_showonly = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1, cv::Mat::AUTO_STEP);
+
 
 	M_p_PointCloud_XYZ = (new pcl::PointCloud<pcl::PointXYZ>)->makeShared();
 	M_p_PointCloud_XYZRGB = (new pcl::PointCloud<pcl::PointXYZRGB>)->makeShared();
@@ -98,11 +100,11 @@ void CRealSenseInterface::connect()
 	M_frame_name.emplace_back("IR1_left");
 	M_frame_name.emplace_back("IR2_right");
 
-	////show only
-	//cv::namedWindow(M_frame_name[0], cv::WINDOW_NORMAL);
-	//cv::namedWindow(M_frame_name[1], cv::WINDOW_NORMAL);
-	//cv::namedWindow(M_frame_name[2], cv::WINDOW_NORMAL);
-	//cv::namedWindow(M_frame_name[3], cv::WINDOW_NORMAL);
+	//show only
+	cv::namedWindow(M_frame_name[0], cv::WINDOW_NORMAL);
+	cv::namedWindow(M_frame_name[1], cv::WINDOW_NORMAL);
+	cv::namedWindow(M_frame_name[2], cv::WINDOW_NORMAL);
+	cv::namedWindow(M_frame_name[3], cv::WINDOW_NORMAL);
 
 }
 
@@ -143,30 +145,86 @@ void CRealSenseInterface::thread_start()
 
 void CRealSenseInterface::doFrames_loop()
 {
-	Sleep(20);
-
+	//Sleep(20);
 	//Sleep(2 * 1000);
-	boost::mutex::scoped_lock lock(M_mutex);
-	//boost::unique_lock<boost::mutex> lock(M_mutex);
 
 	cout << "getFrames_loop()" << endl;
+	static string t1 = M_time_.getTimeString();
+	static string t2 = M_time_.getTimeString();
+
+	t1 = M_time_.getTimeString();
+
+	//cout << "elapsed time from last(sensor):" << M_time_.getTimeElapsefrom2Strings(t1, t2) << endl;
+
+
+	int cnt_ = 0;
+
+	M_mutex_frames.lock();
+
 	M_frames = M_pipe.wait_for_frames();
 	M_timestanp = M_time_.getTimeString();
+
+	cout << "ir save ";
+	cout << M_time_.getTimeElapsefrom2Strings(t1, M_time_.getTimeString()) << endl;
+	M_mutex_img_ir_left.lock();
+	*M_p_img_ir_left = get_img_ir_left_calc(M_frames, false);
+	M_mutex_img_ir_left.unlock();
+
+	M_mutex_img_ir_right.lock();
+	*M_p_img_ir_right = get_img_ir_right_calc(M_frames, false);
+	M_mutex_img_ir_right.unlock();
+
+	cout << "depth_show save ";
+	cout << M_time_.getTimeElapsefrom2Strings(t1, M_time_.getTimeString()) << endl;
+	M_mutex_img_depth_show.lock();
+	*M_p_img_depth_show = get_img_depth_calc(M_frames, true, true);	//colorize
+	M_mutex_img_depth_show.unlock();
+
+	M_mutex_img_color.lock();
+	M_mutex_img_depth.lock();
+	M_mutex_PC_XYZ.lock();
+	M_mutex_PC_XYZRGB.lock();
+
+
+	cout << "color save ";
+	cout << M_time_.getTimeElapsefrom2Strings(t1, M_time_.getTimeString()) << endl;
+	*M_p_img_color = get_img_color_calc(M_frames);
+	cout << "depth save ";
+	cout << M_time_.getTimeElapsefrom2Strings(t1, M_time_.getTimeString()) << endl;
+	*M_p_img_depth = get_img_depth_calc(M_frames, false, true);		//don't colorize
+
+
+	//M_p_PointCloud_XYZRGB = get_PointCloud_XYZRGB_calc(M_p_img_color, M_p_img_depth);
+
+	M_mutex_PC_XYZRGB.unlock();
+	M_mutex_PC_XYZ.unlock();
+	M_mutex_img_depth.unlock();
+	M_mutex_img_color.unlock();
+
+	M_mutex_frames.unlock();
+
+	t2 = M_time_.getTimeString();
+	cout << "elapsed time(sensor):" << M_time_.getTimeElapsefrom2Strings(t1, t2) << endl;
+	cout << endl;
+
+
 	//Sleep(10);
-	//Sleep(100);
+	//Sleep(500);
+	
 
-	if (count_5 == 4) {
-		cout << "wait start" << endl;
-		M_cond.wait(lock, [&] {return M_b_wake_thread; });
-		//M_cond.wait(lock, [=] {return M_b_wake_thread; });
-		cout << "wait end" << endl;
-		M_b_wake_thread = false;
-	}
-	//M_b_wake_thread = true;
-	//M_cond.notify_all();
+	//if (count_5 == 4) {
+	//	cout << "wait start" << endl;
+	//	M_cond.wait(lock, [&] {return M_b_wake_thread; });
+	//	//M_cond.wait(lock, [=] {return M_b_wake_thread; });
+	//	cout << "wait end" << endl;
+	//	M_b_wake_thread = false;
+	//}
+	////M_b_wake_thread = true;
+	////M_cond.notify_all();
 
-	count_5++;
-	if (count_5 == 5) count_5 = 0;
+	//count_5++;
+	//if (count_5 == 5) count_5 = 0;
+
 }
 
 bool CRealSenseInterface::updateFrames()
@@ -178,12 +236,12 @@ bool CRealSenseInterface::updateFrames()
 
 	if (b_use_try_lock)
 	{
-		boost::mutex::scoped_try_lock lock(M_mutex);
+		boost::mutex::scoped_try_lock lock(M_mutex_frames);
 		if (lock.owns_lock())
 		{
 			cout << "frames updated" << endl;
-			M_frames_newest = M_frames;
-			M_timestanp_newest = M_timestanp;
+			M_frames_onetime = M_frames;
+			M_timestanp_onetime = M_timestanp;
 			b_result =  true;
 		}
 
@@ -193,11 +251,11 @@ bool CRealSenseInterface::updateFrames()
 
 	else
 	{
-		boost::mutex::scoped_lock lock(M_mutex);
+		boost::mutex::scoped_lock lock(M_mutex_frames);
 
 		cout << "frames updated" << endl;
-		M_frames_newest = M_frames;
-		M_timestanp_newest = M_timestanp;
+		M_frames_onetime = M_frames;
+		M_timestanp_onetime = M_timestanp;
 
 		b_result = true;
 	}
@@ -237,8 +295,8 @@ void CRealSenseInterface::show_PointCloud()
 		if (b_show_cout)
 			cout << "t1 = " << M_time_.getTimeString() << endl;
 
-		if (updateFrames())
-			get_PointCloud_XYZRGB_individual();
+		//if (updateFrames())
+		//	get_PointCloud_XYZRGB_individual();
 
 		if (b_show_cout)
 			cout << "t2 = " << M_time_.getTimeString() << endl;
@@ -249,9 +307,9 @@ void CRealSenseInterface::show_PointCloud()
 		if (b_show_cout)
 			cout << "t3 = " << M_time_.getTimeString() << endl;
 
-
+		boost::mutex::scoped_try_lock lock(M_mutex_PC_XYZRGB);
 		//cout << "show" << endl;
-		if (M_p_PointCloud_XYZRGB)
+		if (lock.owns_lock() && M_p_PointCloud_XYZRGB)
 		{
 			// Update Point Cloud
 			m_handler->setInputCloud(M_p_PointCloud_XYZRGB);
@@ -278,33 +336,96 @@ void CRealSenseInterface::show_PointCloud()
 
 }
 
-
-cv::Mat* CRealSenseInterface::get_img_color_individual(bool b_align_to_color_img)
+rs2::frameset CRealSenseInterface::get_frames_onetime()
 {
+	boost::mutex::scoped_lock(M_mutex_frames_onetime);
+	return M_frames_onetime;
+}
+
+void CRealSenseInterface::update_frames_onetime()
+{
+	M_mutex_frames_onetime.lock();
+	M_mutex_frames.lock();
+	M_frames_onetime = M_frames;
+	M_timestanp_onetime = M_timestanp;
+	M_mutex_frames.lock();
+	M_mutex_frames_onetime.lock();
+}
+
+
+cv::Mat* CRealSenseInterface::get_img_color()
+{
+	//which fast in destorying variable and return?
+	boost::mutex::scoped_lock(M_mutex_img_color);
+	return M_p_img_color;
+}
+
+void CRealSenseInterface::update_img_color_individual(bool b_align_to_color_img)
+{
+	boost::mutex::scoped_lock lock(M_mutex_img_color);
 	//cout << "get color image" << endl;
 
-	rs2::video_frame frame_data = M_frames_newest.get_color_frame();
+	rs2::video_frame frame_data = M_frames_onetime.get_color_frame();
 
 	if (b_align_to_color_img)
 	{
 		//https://qiita.com/idev_jp/items/3eba792279d836646664
 		//solve the probrem that the angles of color and depth is diffefent;
 		rs2::align align(RS2_STREAM_COLOR);
-		auto aligned_frames = align.process(M_frames_newest);
+		auto aligned_frames = align.process(M_frames_onetime);
 		frame_data = aligned_frames.get_color_frame();
 	}
 
 	*M_p_img_color = cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3,
 		(void*)frame_data.get_data(), cv::Mat::AUTO_STEP).clone();
-
-	return M_p_img_color;
 }
 
-cv::Mat* CRealSenseInterface::get_img_depth_individual(bool b_align_to_color_img)
+cv::Mat CRealSenseInterface::get_img_color_calc(rs2::frameset frame, bool b_align_to_color_img)
 {
+	//cout << "get color image" << endl;
+
+	rs2::video_frame frame_data = frame.get_color_frame();
+
+	cv::Mat img_color;
+
+	if (b_align_to_color_img)
+	{
+		//https://qiita.com/idev_jp/items/3eba792279d836646664
+		//solve the probrem that the angles of color and depth is diffefent;
+		rs2::align align(RS2_STREAM_COLOR);
+		auto aligned_frames = align.process(frame);
+		frame_data = aligned_frames.get_color_frame();
+
+	}
+
+	//*p_img_color = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3,
+	//	(void*)frame_data.get_data(), cv::Mat::AUTO_STEP)->clone();
+	img_color = cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3,
+		(void*)frame_data.get_data(), cv::Mat::AUTO_STEP).clone();
+
+	return img_color;
+}
+
+cv::Mat* CRealSenseInterface::get_img_depth()
+{
+	boost::mutex::scoped_lock(M_mutex_img_depth);
+	return M_p_img_depth;
+}
+
+cv::Mat* CRealSenseInterface::get_img_depth_show()
+{
+	boost::mutex::scoped_lock(M_mutex_img_depth_show);
+	return M_p_img_depth_show;
+}
+
+void CRealSenseInterface::update_img_depth_individual(bool b_align_to_color_img)
+{
+	boost::mutex::scoped_lock lock_depth(M_mutex_img_depth);
+	boost::mutex::scoped_lock lock_depth_show(M_mutex_img_depth_show);
+
 	//cout << "get depth image" << endl;
 	
-	rs2::video_frame frame_data = M_frames_newest.get_depth_frame().apply_filter(M_colorizer);
+	rs2::video_frame frame_data = M_frames_onetime.get_depth_frame().apply_filter(M_colorizer);
 
 	//cout << "frame_data size = " << frame_data.get_data_size() << endl;
 	//cout << "frame_data height = " << frame_data.get_height() << endl;
@@ -317,7 +438,7 @@ cv::Mat* CRealSenseInterface::get_img_depth_individual(bool b_align_to_color_img
 		//https://qiita.com/idev_jp/items/3eba792279d836646664
 		//solve the probrem that the angles of color and depth is diffefent;
 		rs2::align align(RS2_STREAM_COLOR);
-		auto aligned_frames = align.process(M_frames_newest);
+		auto aligned_frames = align.process(M_frames_onetime);
 
 		frame_data = aligned_frames.get_depth_frame().apply_filter(M_colorizer);
 
@@ -326,50 +447,194 @@ cv::Mat* CRealSenseInterface::get_img_depth_individual(bool b_align_to_color_img
 		//cout << "frame_data width = " << frame_data.get_width() << endl;
 	}
 
-	*M_p_img_depth = cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3,
+	*M_p_img_depth_show = cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3,
 		(void*)frame_data.get_data(), cv::Mat::AUTO_STEP).clone();
-
-	return M_p_img_depth;
 }
 
-cv::Mat* CRealSenseInterface::get_img_ir_left_individual(bool b_align_to_color_img)
+cv::Mat CRealSenseInterface::get_img_depth_calc(rs2::frameset frame, bool b_colorize, bool b_align_to_color_img)
 {
+	//cout << "get depth image" << endl;
+	rs2::colorizer colorizer;
+
+	//cout << "true = " << true << endl;
+	cout << "b_colorize = " << b_colorize << endl;
+
+	rs2::video_frame frame_data = frame.get_depth_frame();
+	cout << "frame_data size = " << frame_data.get_data_size() << endl;
+	cout << "frame_data height = " << frame_data.get_height() << endl;
+	cout << "frame_data width = " << frame_data.get_width() << endl;
+	
+	if(b_colorize)
+		frame_data = frame.get_depth_frame().apply_filter(colorizer);
+	cout << "frame_data size = " << frame_data.get_data_size() << endl;
+	cout << "frame_data height = " << frame_data.get_height() << endl;
+	cout << "frame_data width = " << frame_data.get_width() << endl;
+
+
+	cv::Mat img_depth;
+
+	//frame_data.get_data
+
+	if (b_align_to_color_img)
+	{
+		//https://qiita.com/idev_jp/items/3eba792279d836646664
+		//solve the probrem that the angles of color and depth is diffefent;
+		rs2::align align(RS2_STREAM_COLOR);
+		auto aligned_frames = align.process(frame);
+
+		if (b_colorize)
+			frame_data = aligned_frames.get_depth_frame().apply_filter(colorizer);
+		else
+			frame_data = aligned_frames.get_depth_frame();
+
+
+		cout << "frame_data size = " << frame_data.get_data_size() << endl;
+		cout << "frame_data height = " << frame_data.get_height() << endl;
+		cout << "frame_data width = " << frame_data.get_width() << endl;
+	}
+
+	//if (b_colorize)
+	//	img_depth = cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3,
+	//	(void*)frame_data.get_data(), cv::Mat::AUTO_STEP);
+	//else
+	//	img_depth = cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1,
+	//	(void*)frame_data.get_data(), cv::Mat::AUTO_STEP);
+	if (b_colorize)
+		img_depth = cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3,
+		(void*)frame_data.get_data(), cv::Mat::AUTO_STEP).clone();
+	else
+		img_depth = cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1,
+		(void*)frame_data.get_data(), cv::Mat::AUTO_STEP).clone();
+
+	int size_pixel = img_depth.rows * img_depth.cols;
+	cout << "size_pixel = " << size_pixel << endl;
+
+	//if (b_colorize)
+	//{
+	//	for (int i = 0; i < size_pixel; i++)
+	//	{
+	//		if (i % 100000 == 0)
+	//		{
+	//			uchar aa, bb, cc;
+	//			aa = img_depth.data[i * 3 + 0];
+	//			bb = img_depth.data[i * 3 + 1];
+	//			cc = img_depth.data[i * 3 + 2];
+	//			cout << "i:" << i;
+	//			cout << " " << (int)aa;
+	//			cout << " " << (int)bb;
+	//			cout << " " << (int)cc;
+	//			cout << endl;
+	//		}
+	//	}
+	//}
+
+	return img_depth;
+}
+
+cv::Mat* CRealSenseInterface::get_img_ir_left()
+{
+	boost::mutex::scoped_lock(M_mutex_img_ir_left);
+	return M_p_img_ir_left;
+}
+
+void CRealSenseInterface::update_img_ir_left_individual(bool b_align_to_color_img)
+{
+	boost::mutex::scoped_lock lock(M_mutex_img_ir_left);
+
 	//cout << "get ir left image" << endl;
 
-	rs2::video_frame frame_data = M_frames_newest.get_infrared_frame(2);
+	rs2::video_frame frame_data = M_frames_onetime.get_infrared_frame(2);
 
 	//don't work
 	if (b_align_to_color_img)
 	{
 		rs2::align align(RS2_STREAM_COLOR);
-		auto aligned_frames = align.process(M_frames_newest);
+		auto aligned_frames = align.process(M_frames_onetime);
 		frame_data = aligned_frames.get_infrared_frame(1);
 	}
 
 	*M_p_img_ir_left =
-		cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1, (void*)frame_data.get_data(), cv::Mat::AUTO_STEP).clone();
-
-	return M_p_img_ir_left;
+		cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1,
+		(void*)frame_data.get_data(), cv::Mat::AUTO_STEP).clone();
 }
 
-cv::Mat* CRealSenseInterface::get_img_ir_right_individual(bool b_align_to_color_img)
+cv::Mat CRealSenseInterface::get_img_ir_left_calc(rs2::frameset frame, bool b_align_to_color_img)
 {
-	//cout << "get ir right image" << endl;
+	//cout << "get ir left image" << endl;
 
-	rs2::video_frame frame_data = M_frames_newest.get_infrared_frame(2);
+	cv::Mat img_ir_left;
+
+	rs2::video_frame frame_data = frame.get_infrared_frame(1);
 
 	//don't work
 	if (b_align_to_color_img)
 	{
 		rs2::align align(RS2_STREAM_COLOR);
-		auto aligned_frames = align.process(M_frames_newest);
+		auto aligned_frames = align.process(frame);
+		frame_data = aligned_frames.get_infrared_frame(1);
+	}
+
+	img_ir_left = 
+		cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1,
+		(void*)frame_data.get_data(), cv::Mat::AUTO_STEP).clone();
+
+	return img_ir_left;
+}
+
+cv::Mat* CRealSenseInterface::get_img_ir_right()
+{
+	boost::mutex::scoped_lock(M_mutex_img_ir_right);
+	return M_p_img_ir_right;
+}
+
+void CRealSenseInterface::update_img_ir_right_individual(bool b_align_to_color_img)
+{
+	boost::mutex::scoped_lock lock(M_mutex_img_ir_right);
+
+	//cout << "get ir right image" << endl;
+
+	rs2::video_frame frame_data = M_frames_onetime.get_infrared_frame(2);
+
+	//don't work
+	if (b_align_to_color_img)
+	{
+		rs2::align align(RS2_STREAM_COLOR);
+		auto aligned_frames = align.process(M_frames_onetime);
 		frame_data = aligned_frames.get_infrared_frame(2);
 	}
 
 	*M_p_img_ir_right = 
-		cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1, (void*)frame_data.get_data(), cv::Mat::AUTO_STEP).clone();
+		cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1,
+		(void*)frame_data.get_data(), cv::Mat::AUTO_STEP).clone();
+}
 
-	return M_p_img_ir_right;
+cv::Mat CRealSenseInterface::get_img_ir_right_calc(rs2::frameset frame, bool b_align_to_color_img)
+{
+	//cout << "get ir right image" << endl;
+
+	cv::Mat img_ir_right;
+
+	rs2::video_frame frame_data = frame.get_infrared_frame(2);
+
+	//don't work
+	if (b_align_to_color_img)
+	{
+		rs2::align align(RS2_STREAM_COLOR);
+		auto aligned_frames = align.process(frame);
+		frame_data = aligned_frames.get_infrared_frame(2);
+	}
+
+	img_ir_right =
+		cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1, 
+		(void*)frame_data.get_data(), cv::Mat::AUTO_STEP).clone();
+
+	return img_ir_right;
+}
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr CRealSenseInterface::get_PointCloud_XYZ()
+{ 
+	boost::mutex::scoped_lock(M_mutex_PC_XYZ);
+	return M_p_PointCloud_XYZ; 
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr CRealSenseInterface::get_PointCloud_XYZ_individual()
@@ -378,13 +643,34 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr CRealSenseInterface::get_PointCloud_XYZ_indi
 	return M_p_PointCloud_XYZ;
 }
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr CRealSenseInterface::get_PointCloud_XYZRGB_individual()
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr CRealSenseInterface::get_PointCloud_XYZRGB()
 {
+	boost::mutex::scoped_lock(M_mutex_PC_XYZRGB);
+	return M_p_PointCloud_XYZRGB;
+}
+
+void CRealSenseInterface::update_PointCloud_XYZRGB_individual()
+{
+	boost::mutex::scoped_lock lock(M_mutex_PC_XYZRGB);
+
 	cout << "get_PointCloud_XYZRGB_individual" << endl;
 
 	//image copy ok ?
-	get_img_color_individual();
-	get_img_depth_individual();
+	update_img_color_individual();
+	update_img_depth_individual();
+
+	cv::Mat *p_img_color;
+	cv::Mat *p_img_depth;
+
+	M_mutex_img_color.lock();
+	*p_img_color = M_p_img_color->clone();
+	M_mutex_img_color.unlock();
+
+
+	M_mutex_img_depth.lock();
+	*p_img_depth = M_p_img_depth_show->clone();
+	M_mutex_img_depth.unlock();
+
 	//get_img_color_individual(false);
 	//get_img_depth_individual(false);
 
@@ -436,9 +722,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr CRealSenseInterface::get_PointCloud_XYZRG
 		{
 			idx = idxShift + i;
 			// read depth data
-			fbdepth.data[0] = M_p_img_depth->data[idx * 3];
-			fbdepth.data[1] = M_p_img_depth->data[idx * 3 + 1];
-			fbdepth.data[2] = M_p_img_depth->data[idx * 3 + 2];
+			fbdepth.data[0] = p_img_depth->data[idx * 3];
+			fbdepth.data[1] = p_img_depth->data[idx * 3 + 1];
+			fbdepth.data[2] = p_img_depth->data[idx * 3 + 2];
 
 			// compute X, Y coordinates
 			u = idx % WIDTH - WIDTH / 2;
@@ -460,9 +746,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr CRealSenseInterface::get_PointCloud_XYZRG
 				M_p_PointCloud_XYZRGB->points[idx].y = y;
 				M_p_PointCloud_XYZRGB->points[idx].z = z;
 
-				//M_p_PointCloud_XYZRGB->points[idx].b = M_p_img_color->data[((j * WIDTH) + (i)) * 3];
-				//M_p_PointCloud_XYZRGB->points[idx].g = M_p_img_color->data[((j * WIDTH) + (i)) * 3 + 1];
-				//M_p_PointCloud_XYZRGB->points[idx].r = M_p_img_color->data[((j * WIDTH) + (i)) * 3 + 2];
+				//M_p_PointCloud_XYZRGB->points[idx].b = p_img_color->data[((j * WIDTH) + (i)) * 3];
+				//M_p_PointCloud_XYZRGB->points[idx].g = p_img_color->data[((j * WIDTH) + (i)) * 3 + 1];
+				//M_p_PointCloud_XYZRGB->points[idx].r = p_img_color->data[((j * WIDTH) + (i)) * 3 + 2];
 				M_p_PointCloud_XYZRGB->points[idx].b = 255;
 				M_p_PointCloud_XYZRGB->points[idx].g = 255;
 				M_p_PointCloud_XYZRGB->points[idx].r = 255;
@@ -470,51 +756,261 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr CRealSenseInterface::get_PointCloud_XYZRG
 		}
 	}
 	idxShift = 0;
-	
-	return M_p_PointCloud_XYZRGB;
+}
+
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr CRealSenseInterface::get_PointCloud_XYZRGB_calc(cv::Mat *p_img_color, cv::Mat *p_img_depth)
+{
+	//cout << "get_PointCloud_XYZRGB_individual" << endl;
+
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr p_PointCloud_XYZRGB;
+
+	int cnt_ = 0;
+
+	cout << "debug2:" << cnt_++ << endl;
+
+	if ((p_img_color->rows != p_img_depth->rows)
+		|| p_img_color->cols != p_img_depth->cols)
+	{
+		cout << "Error: image size is different (PointCloud)" << endl;
+		return p_PointCloud_XYZRGB;
+	}
+	cout << "debug2:" << cnt_++ << endl;
+
+
+	////range
+	//{
+	//	for (int v = 0; v < 720; v++)
+	//		for (int u = 0; u < 1280; u++)
+	//		{
+	//			if (v % 100 == 0 && u % 100 == 0)
+	//			{
+	//				//https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0#depth-image-formats
+	//				float pixel_distance_in_meters = M_frames.get_depth_frame().get_distance(u, v);
+	//				cout << "u:" << u << " v:" << v;
+	//				cout << " depth value = " << pixel_distance_in_meters << endl;
+	//			}
+	//		}
+	//}
+
+	union UDEPTH
+	{
+		int value;
+		BYTE data[3];
+	};
+
+	int WIDTH = M_WIDTH;
+	int HEIGHT = M_HEIGHT;
+
+	// allocate point cloud
+	int u, v, n_pixels = WIDTH * HEIGHT;
+	p_PointCloud_XYZRGB->clear();
+	p_PointCloud_XYZRGB->width = WIDTH;
+	p_PointCloud_XYZRGB->height = HEIGHT;
+	p_PointCloud_XYZRGB->points.resize(WIDTH * HEIGHT);
+	p_PointCloud_XYZRGB->is_dense = false;
+	UDEPTH fbdepth;
+	fbdepth.value = 0;
+	int idxShift = 0; int idx = 0;
+	double x, y, z;
+	//M_p_PointCloud_XYZ->clear();
+	//M_p_PointCloud_XYZ->points.resize(WIDTH);
+	int nRangeDataIDx = 0;
+	double dist = 0.0;
+
+	cout << "debug2:" << cnt_++ << endl;
+
+
+	for (int j = 0; j < HEIGHT; ++j)
+	{
+		idxShift = j * WIDTH;
+
+		for (int i = 0; i < WIDTH; ++i)
+		{
+			idx = idxShift + i;
+			// read depth data
+			fbdepth.data[0] = p_img_depth->data[idx * 3];
+			fbdepth.data[1] = p_img_depth->data[idx * 3 + 1];
+			fbdepth.data[2] = p_img_depth->data[idx * 3 + 2];
+
+			// compute X, Y coordinates
+			u = idx % WIDTH - WIDTH / 2;
+			v = HEIGHT / 2 - j;
+
+			x = fbdepth.value / 1000.0f;
+			y = -(fbdepth.value / 1000.0f) / (M_FOCAL_LENGTH_FY * 0.001f) * u / 1.0f;
+			z = (fbdepth.value / 1000.0f) / (M_FOCAL_LENGTH_FZ * 0.001f) * v / 1.0f;
+
+			if (fbdepth.value < M_DEPTHMINVALUE || fbdepth.value > M_DEPTHMAXVALUE)
+			{
+				p_PointCloud_XYZRGB->points[idx].x = NULL;
+				p_PointCloud_XYZRGB->points[idx].y = NULL;
+				p_PointCloud_XYZRGB->points[idx].z = NULL;
+			}
+			else
+			{
+				p_PointCloud_XYZRGB->points[idx].x = x;
+				p_PointCloud_XYZRGB->points[idx].y = y;
+				p_PointCloud_XYZRGB->points[idx].z = z;
+
+				//p_PointCloud_XYZRGB->points[idx].b = p_img_color->data[((j * WIDTH) + (i)) * 3];
+				//p_PointCloud_XYZRGB->points[idx].g = p_img_color->data[((j * WIDTH) + (i)) * 3 + 1];
+				//p_PointCloud_XYZRGB->points[idx].r = p_img_color->data[((j * WIDTH) + (i)) * 3 + 2];
+				p_PointCloud_XYZRGB->points[idx].b = 255;
+				p_PointCloud_XYZRGB->points[idx].g = 255;
+				p_PointCloud_XYZRGB->points[idx].r = 255;
+			}
+		}
+	}
+
+	cout << "debug2:" << cnt_++ << endl;
+
+
+	return p_PointCloud_XYZRGB;
 }
 
 void CRealSenseInterface::showFrame()
 {
-	if (updateFrames())
-	{
-		get_img_color_individual();
-		get_img_depth_individual();
-		get_img_ir_left_individual();
-		get_img_ir_right_individual();
-		//get_img_color_individual(false);
-		//get_img_depth_individual(false);
-		//get_img_ir_left_individual(false);
-		//get_img_ir_right_individual(false);
-	}
+	bool b_show = false;
+	b_show = true;
 
-	cv::waitKey(1);
-	
-	//https://hidehiroqt.com/archives/173
+	//cv::Mat img_error = cv::Mat(cv::Size(1280, 720), CV_8UC3, cv::Scalar(255, 255, 255));
+
+	cout << "show" << endl;
+
 	double ratio_show;
 	//ratio_show = 1.;
 	ratio_show = 0.5;
-	//cv::resizeWindow(M_frame_name[0], M_frame0->cols* ratio_show, M_frame0->rows* ratio_show);
-	//cv::resizeWindow(M_frame_name[1], M_frame1->cols* ratio_show, M_frame1->rows* ratio_show);
-	//cv::resizeWindow(M_frame_name[2], M_frame2->cols* ratio_show, M_frame2->rows* ratio_show);
-	//cv::resizeWindow(M_frame_name[3], M_frame3->cols* ratio_show, M_frame3->rows* ratio_show);
-	cv::resizeWindow(M_frame_name[0], M_p_img_color->cols* ratio_show, M_p_img_color->rows* ratio_show);
-	cv::resizeWindow(M_frame_name[1], M_p_img_depth->cols* ratio_show, M_p_img_depth->rows* ratio_show);
-	cv::resizeWindow(M_frame_name[2], M_p_img_ir_left->cols* ratio_show, M_p_img_ir_left->rows* ratio_show);
-	cv::resizeWindow(M_frame_name[3], M_p_img_ir_right->cols* ratio_show, M_p_img_ir_right->rows* ratio_show);
-	cv::imshow(M_frame_name[0], *M_p_img_color);
-	cv::imshow(M_frame_name[1], *M_p_img_depth);
-	cv::imshow(M_frame_name[2], *M_p_img_ir_left);
-	cv::imshow(M_frame_name[3], *M_p_img_ir_right);
+
+	{
+		boost::mutex::scoped_try_lock lock(M_mutex_img_color);
+		if (lock.owns_lock()) {
+			//https://hidehiroqt.com/archives/173
+			//cout << "show color" << endl;
+			*M_p_img_color_showonly = M_p_img_color->clone();
+		}
+		else
+		{
+			if (b_show) cout << "try failed" << endl;
+		}
+	}
+
+	{
+		boost::mutex::scoped_try_lock lock(M_mutex_img_depth_show);
+		if (lock.owns_lock()) {
+			//cout << "show depth" << endl;
+			*M_p_img_depth_show_showonly = M_p_img_depth_show->clone();
+		}
+		else
+		{
+			if (b_show) cout << "try failed" << endl;
+		}
+	}
+
+	{
+		boost::mutex::scoped_try_lock lock(M_mutex_img_ir_left);
+		if (lock.owns_lock()) {
+			*M_p_img_ir_left_showonly = M_p_img_ir_left->clone();
+		}
+		else
+		{
+			if (b_show) cout << "try failed" << endl;
+		}
+
+	}
+
+	{
+		boost::mutex::scoped_try_lock lock(M_mutex_img_ir_right);
+		if (lock.owns_lock()) {
+			*M_p_img_ir_right_showonly = M_p_img_ir_right->clone();
+		}
+		else
+		{
+			if (b_show) cout << "try failed" << endl;
+		}
+
+	}
+
+	cv::resizeWindow(M_frame_name[0], 
+		M_p_img_color_showonly->cols* ratio_show, M_p_img_color_showonly->rows* ratio_show);
+	cv::resizeWindow(M_frame_name[1], 
+		M_p_img_depth_show_showonly->cols* ratio_show, M_p_img_depth_show_showonly->rows* ratio_show);
+	cv::resizeWindow(M_frame_name[2], 
+		M_p_img_ir_left_showonly->cols* ratio_show, M_p_img_ir_left_showonly->rows* ratio_show);
+	cv::resizeWindow(M_frame_name[3], 
+		M_p_img_ir_right_showonly->cols* ratio_show, M_p_img_ir_right_showonly->rows* ratio_show);
+	cv::imshow(M_frame_name[0], *M_p_img_color_showonly);
+	cv::imshow(M_frame_name[1], *M_p_img_depth_show_showonly);
+	cv::imshow(M_frame_name[2], *M_p_img_ir_left_showonly);
+	cv::imshow(M_frame_name[3], *M_p_img_ir_right_showonly);
+
+
+	cv::waitKey(1);
 }
+
+void CRealSenseInterface::showFrame_test()
+{
+	bool b_show = false;
+	b_show = true;
+
+	cout << "show test" << endl;
+
+	{
+		boost::mutex::scoped_try_lock lock(M_mutex_img_color);
+		if (lock.owns_lock()) {
+			M_p_img_color->rows;
+			Sleep(10);
+		}
+		else
+		{
+			if (b_show) cout << "try failed" << endl;
+		}
+	}
+
+	{
+		boost::mutex::scoped_try_lock lock(M_mutex_img_depth_show);
+		if (lock.owns_lock()) {
+			M_p_img_depth_show->rows;
+			Sleep(10);
+		}
+		else
+		{
+			if (b_show) cout << "try failed" << endl;
+		}
+	}
+
+	//{
+	//	boost::mutex::scoped_try_lock lock(M_mutex_img_ir_left);
+	//	if (lock.owns_lock()) {
+	//		Sleep(10);
+	//	}
+	//	else
+	//	{
+	//		if (b_show) cout << "try failed" << endl;
+	//	}
+	//}
+
+	//{
+	//	boost::mutex::scoped_try_lock lock(M_mutex_img_ir_right);
+	//	if (lock.owns_lock()) {
+	//		Sleep(10);
+	//	}
+	//	else
+	//	{
+	//		if (b_show) cout << "try failed" << endl;
+	//	}
+
+	//}
+
+}
+
 
 void CRealSenseInterface::showFrame_ir()
 {
 	if (updateFrames())
 	{
 		cout << "debug: 0" << endl;
-		get_img_ir_left_individual();
-		//get_img_ir_right_individual();
+		update_img_ir_left_individual();
+		//update_img_ir_right_individual();
 		cout << "debug: 1" << endl;
 
 	}

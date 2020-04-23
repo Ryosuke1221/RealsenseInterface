@@ -30,34 +30,46 @@ class CRealSenseInterface
 	rs2::config M_cfg;
 
 	rs2::frameset M_frames;
-	rs2::frameset M_frames_newest;
+	rs2::frameset M_frames_onetime;
 	string M_timestanp;
-	string M_timestanp_newest;
+	string M_timestanp_onetime;
 
 	std::vector<std::string> M_frame_name;
 	//std::vector<rs2::video_frame> frame_vector;
 
-	cv::Mat *M_frame0;
-	cv::Mat *M_frame1;
-	cv::Mat *M_frame2;
-	cv::Mat *M_frame3;
-
 	cv::Mat *M_p_img_color;
 	cv::Mat *M_p_img_depth;
+	cv::Mat *M_p_img_depth_show;
 	cv::Mat *M_p_img_ir_left;
 	cv::Mat *M_p_img_ir_right;
 	cv::Mat *M_p_img_temp_8UC3;
+
+	cv::Mat *M_p_img_color_showonly;
+	cv::Mat *M_p_img_depth_showonly;
+	cv::Mat *M_p_img_depth_show_showonly;
+	cv::Mat *M_p_img_ir_left_showonly;
+	cv::Mat *M_p_img_ir_right_showonly;
+
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr M_p_PointCloud_XYZ;
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr M_p_PointCloud_XYZRGB;
 
 
-	boost::mutex M_mutex;
 	boost::thread M_thread_Frames_loop;
 	boost::condition M_cond;
 	bool M_b_wake_thread;
 	string M_time_start;
 	int count_5;
+
+	boost::mutex M_mutex_frames;
+	boost::mutex M_mutex_frames_onetime;
+	boost::mutex M_mutex_img_color;
+	boost::mutex M_mutex_img_depth;
+	boost::mutex M_mutex_img_depth_show;
+	boost::mutex M_mutex_img_ir_left;
+	boost::mutex M_mutex_img_ir_right;
+	boost::mutex M_mutex_PC_XYZ;
+	boost::mutex M_mutex_PC_XYZRGB;
 
 	CTimeString M_time_;
 
@@ -73,9 +85,6 @@ class CRealSenseInterface
 	const static int M_FOCAL_LENGTH_FY = 923912;//fx in RealSense color
 	const static int M_FOCAL_LENGTH_FZ = 924449;//fy in RealSense color
 
-
-
-
 	void thread_start();
 
 public:
@@ -88,21 +97,34 @@ public:
 	//	pcl::PointCloud<pcl::PointXYZ>::Ptr p_PointCloud_XYZ;
 	//	pcl::PointCloud<pcl::PointXYZRGB>::Ptr p_PointCloud_XYZRGB;
 
-	//public:
-	//	cv::Mat* get_img_color() { return p_img_color; }
-	//	cv::Mat* get_img_depth() { return p_img_depth; }
-	//	cv::Mat* get_img_ir_left() { return p_img_ir_left; }
-	//	cv::Mat* get_img_ir_right() { return p_img_ir_right; }
-	//	pcl::PointCloud<pcl::PointXYZ>::Ptr get_PointCloud_XYZ() { return p_PointCloud_XYZ; }
-	//	pcl::PointCloud<pcl::PointXYZRGB>::Ptr get_PointCloud_XYZRGB() { return p_PointCloud_XYZRGB; }
-	//};
+	void update_frames_onetime();
 
-	cv::Mat* get_img_color_individual(bool b_align_to_color_img = true);
-	cv::Mat* get_img_depth_individual(bool b_align_to_color_img = true);
-	cv::Mat* get_img_ir_left_individual(bool b_align_to_color_img = true);
-	cv::Mat* get_img_ir_right_individual(bool b_align_to_color_img = true);
+	rs2::frameset get_frames_onetime();	//img = rs_int.get_img_color_calc(rs_int.get_M_frames());
+	cv::Mat* get_img_color();
+	cv::Mat* get_img_depth();
+	cv::Mat* get_img_depth_show();
+	cv::Mat* get_img_ir_left();
+	cv::Mat* get_img_ir_right();
+	pcl::PointCloud<pcl::PointXYZ>::Ptr get_PointCloud_XYZ();
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr get_PointCloud_XYZRGB();
+
+	cv::Mat get_img_color_calc(rs2::frameset frame, bool b_align_to_color_img = true);
+	cv::Mat get_img_depth_calc(rs2::frameset frame, bool b_colorize, bool b_align_to_color_img = true);
+	cv::Mat get_img_ir_left_calc(rs2::frameset frame, bool b_align_to_color_img = true);
+	cv::Mat get_img_ir_right_calc(rs2::frameset frame, bool b_align_to_color_img = true);
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr get_PointCloud_XYZRGB_calc(cv::Mat *p_img_color, cv::Mat *p_img_depth);
+
+		//cv::Mat* get_img_ir_left_individual(bool b_align_to_color_img = true);
+	//cv::Mat* get_img_ir_right_individual(bool b_align_to_color_img = true);
+	//pcl::PointCloud<pcl::PointXYZRGB>::Ptr get_PointCloud_XYZRGB_individual();
+
+	void update_img_color_individual(bool b_align_to_color_img = true);
+	void update_img_depth_individual(bool b_align_to_color_img = true);
+	void update_img_ir_left_individual(bool b_align_to_color_img = true);
+	void update_img_ir_right_individual(bool b_align_to_color_img = true);
+	void update_PointCloud_XYZRGB_individual();
+
 	pcl::PointCloud<pcl::PointXYZ>::Ptr get_PointCloud_XYZ_individual();
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr get_PointCloud_XYZRGB_individual();
 
 	// Point Cloud Color Handler
 	boost::shared_ptr<pcl::visualization::PCLVisualizer> m_viewer;				//ëÂè‰ïvÅH
@@ -118,14 +140,14 @@ public:
 	void showFrame();
 	void connect_thread();
 
-	void doFrames_loop();
-
 	void connect_ir();
 	void showFrame_ir();
 
 	void initVisualizer();
 	void show_PointCloud();
 	void disconnect();
+	void showFrame_test();
+	void doFrames_loop();
 
 };
 

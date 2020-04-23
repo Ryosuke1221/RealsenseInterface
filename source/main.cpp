@@ -21,7 +21,7 @@ catch (const std::exception & e)
 
 
 
-int main() try
+int maint() try
 {
 
 	CRealSenseInterface rs_int;
@@ -47,19 +47,23 @@ catch (const std::exception & e)
 	return EXIT_FAILURE;
 }
 
-int maint() try
+int main() try
 {
 
 	CRealSenseInterface rs_int;
 	//rs_int.connect();
 	rs_int.connect_thread();
 
-	Sleep(0.5 * 1000);
+	//Sleep(0.5 * 1000);
 
 	while (1)
 	{
+		//rs_int.doFrames_loop();
 		rs_int.showFrame();
+		//rs_int.showFrame_test();
 	}
+
+	rs_int.disconnect();
 
 	return EXIT_SUCCESS;
 	//return 0;
