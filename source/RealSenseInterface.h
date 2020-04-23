@@ -35,7 +35,6 @@ class CRealSenseInterface
 	string M_timestanp_onetime;
 
 	std::vector<std::string> M_frame_name;
-	//std::vector<rs2::video_frame> frame_vector;
 
 	cv::Mat *M_p_img_color;
 	cv::Mat *M_p_img_depth;
@@ -114,18 +113,6 @@ public:
 	cv::Mat get_img_ir_right_calc(rs2::frameset frame, bool b_align_to_color_img = true);
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr get_PointCloud_XYZRGB_calc(cv::Mat *p_img_color, cv::Mat *p_img_depth);
 
-		//cv::Mat* get_img_ir_left_individual(bool b_align_to_color_img = true);
-	//cv::Mat* get_img_ir_right_individual(bool b_align_to_color_img = true);
-	//pcl::PointCloud<pcl::PointXYZRGB>::Ptr get_PointCloud_XYZRGB_individual();
-
-	void update_img_color_individual(bool b_align_to_color_img = true);
-	void update_img_depth_individual(bool b_align_to_color_img = true);
-	void update_img_ir_left_individual(bool b_align_to_color_img = true);
-	void update_img_ir_right_individual(bool b_align_to_color_img = true);
-	void update_PointCloud_XYZRGB_individual();
-
-	pcl::PointCloud<pcl::PointXYZ>::Ptr get_PointCloud_XYZ_individual();
-
 	// Point Cloud Color Handler
 	boost::shared_ptr<pcl::visualization::PCLVisualizer> m_viewer;				//ëÂè‰ïvÅH
 	pcl::visualization::PointCloudColorHandler<pcl::PointXYZRGB>::Ptr m_handler;
@@ -136,17 +123,13 @@ public:
 	void connect();
 	CRealSenseInterface();
 
-	bool updateFrames();
 	void showFrame();
 	void connect_thread();
-
-	void connect_ir();
-	void showFrame_ir();
 
 	void initVisualizer();
 	void show_PointCloud();
 	void disconnect();
-	void showFrame_test();
+
 	void doFrames_loop();
 
 };

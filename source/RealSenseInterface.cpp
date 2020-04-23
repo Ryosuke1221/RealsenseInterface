@@ -227,45 +227,6 @@ void CRealSenseInterface::doFrames_loop()
 
 }
 
-bool CRealSenseInterface::updateFrames()
-{
-	//updata data from M_frames;
-	bool b_use_try_lock = true;
-	//b_use_try_lock = false;
-	bool b_result = false;
-
-	if (b_use_try_lock)
-	{
-		boost::mutex::scoped_try_lock lock(M_mutex_frames);
-		if (lock.owns_lock())
-		{
-			cout << "frames updated" << endl;
-			M_frames_onetime = M_frames;
-			M_timestanp_onetime = M_timestanp;
-			b_result =  true;
-		}
-
-		else b_result = false;
-
-	}
-
-	else
-	{
-		boost::mutex::scoped_lock lock(M_mutex_frames);
-
-		cout << "frames updated" << endl;
-		M_frames_onetime = M_frames;
-		M_timestanp_onetime = M_timestanp;
-
-		b_result = true;
-	}
-
-	//M_b_wake_thread = true;
-	//M_cond.notify_all();
-
-	return b_result;
-}
-
 void CRealSenseInterface::initVisualizer() {
 
 	// PCL Visualizer
@@ -360,26 +321,6 @@ cv::Mat* CRealSenseInterface::get_img_color()
 	return M_p_img_color;
 }
 
-void CRealSenseInterface::update_img_color_individual(bool b_align_to_color_img)
-{
-	boost::mutex::scoped_lock lock(M_mutex_img_color);
-	//cout << "get color image" << endl;
-
-	rs2::video_frame frame_data = M_frames_onetime.get_color_frame();
-
-	if (b_align_to_color_img)
-	{
-		//https://qiita.com/idev_jp/items/3eba792279d836646664
-		//solve the probrem that the angles of color and depth is diffefent;
-		rs2::align align(RS2_STREAM_COLOR);
-		auto aligned_frames = align.process(M_frames_onetime);
-		frame_data = aligned_frames.get_color_frame();
-	}
-
-	*M_p_img_color = cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3,
-		(void*)frame_data.get_data(), cv::Mat::AUTO_STEP).clone();
-}
-
 cv::Mat CRealSenseInterface::get_img_color_calc(rs2::frameset frame, bool b_align_to_color_img)
 {
 	//cout << "get color image" << endl;
@@ -416,39 +357,6 @@ cv::Mat* CRealSenseInterface::get_img_depth_show()
 {
 	boost::mutex::scoped_lock(M_mutex_img_depth_show);
 	return M_p_img_depth_show;
-}
-
-void CRealSenseInterface::update_img_depth_individual(bool b_align_to_color_img)
-{
-	boost::mutex::scoped_lock lock_depth(M_mutex_img_depth);
-	boost::mutex::scoped_lock lock_depth_show(M_mutex_img_depth_show);
-
-	//cout << "get depth image" << endl;
-	
-	rs2::video_frame frame_data = M_frames_onetime.get_depth_frame().apply_filter(M_colorizer);
-
-	//cout << "frame_data size = " << frame_data.get_data_size() << endl;
-	//cout << "frame_data height = " << frame_data.get_height() << endl;
-	//cout << "frame_data width = " << frame_data.get_width() << endl;
-
-	//frame_data.get_data
-
-	if (b_align_to_color_img)
-	{
-		//https://qiita.com/idev_jp/items/3eba792279d836646664
-		//solve the probrem that the angles of color and depth is diffefent;
-		rs2::align align(RS2_STREAM_COLOR);
-		auto aligned_frames = align.process(M_frames_onetime);
-
-		frame_data = aligned_frames.get_depth_frame().apply_filter(M_colorizer);
-
-		//cout << "frame_data size = " << frame_data.get_data_size() << endl;
-		//cout << "frame_data height = " << frame_data.get_height() << endl;
-		//cout << "frame_data width = " << frame_data.get_width() << endl;
-	}
-
-	*M_p_img_depth_show = cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3,
-		(void*)frame_data.get_data(), cv::Mat::AUTO_STEP).clone();
 }
 
 cv::Mat CRealSenseInterface::get_img_depth_calc(rs2::frameset frame, bool b_colorize, bool b_align_to_color_img)
@@ -537,27 +445,6 @@ cv::Mat* CRealSenseInterface::get_img_ir_left()
 	return M_p_img_ir_left;
 }
 
-void CRealSenseInterface::update_img_ir_left_individual(bool b_align_to_color_img)
-{
-	boost::mutex::scoped_lock lock(M_mutex_img_ir_left);
-
-	//cout << "get ir left image" << endl;
-
-	rs2::video_frame frame_data = M_frames_onetime.get_infrared_frame(2);
-
-	//don't work
-	if (b_align_to_color_img)
-	{
-		rs2::align align(RS2_STREAM_COLOR);
-		auto aligned_frames = align.process(M_frames_onetime);
-		frame_data = aligned_frames.get_infrared_frame(1);
-	}
-
-	*M_p_img_ir_left =
-		cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1,
-		(void*)frame_data.get_data(), cv::Mat::AUTO_STEP).clone();
-}
-
 cv::Mat CRealSenseInterface::get_img_ir_left_calc(rs2::frameset frame, bool b_align_to_color_img)
 {
 	//cout << "get ir left image" << endl;
@@ -585,27 +472,6 @@ cv::Mat* CRealSenseInterface::get_img_ir_right()
 {
 	boost::mutex::scoped_lock(M_mutex_img_ir_right);
 	return M_p_img_ir_right;
-}
-
-void CRealSenseInterface::update_img_ir_right_individual(bool b_align_to_color_img)
-{
-	boost::mutex::scoped_lock lock(M_mutex_img_ir_right);
-
-	//cout << "get ir right image" << endl;
-
-	rs2::video_frame frame_data = M_frames_onetime.get_infrared_frame(2);
-
-	//don't work
-	if (b_align_to_color_img)
-	{
-		rs2::align align(RS2_STREAM_COLOR);
-		auto aligned_frames = align.process(M_frames_onetime);
-		frame_data = aligned_frames.get_infrared_frame(2);
-	}
-
-	*M_p_img_ir_right = 
-		cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1,
-		(void*)frame_data.get_data(), cv::Mat::AUTO_STEP).clone();
 }
 
 cv::Mat CRealSenseInterface::get_img_ir_right_calc(rs2::frameset frame, bool b_align_to_color_img)
@@ -637,125 +503,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr CRealSenseInterface::get_PointCloud_XYZ()
 	return M_p_PointCloud_XYZ; 
 }
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr CRealSenseInterface::get_PointCloud_XYZ_individual()
-{
-	//under construction
-	return M_p_PointCloud_XYZ;
-}
-
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr CRealSenseInterface::get_PointCloud_XYZRGB()
 {
 	boost::mutex::scoped_lock(M_mutex_PC_XYZRGB);
 	return M_p_PointCloud_XYZRGB;
-}
-
-void CRealSenseInterface::update_PointCloud_XYZRGB_individual()
-{
-	boost::mutex::scoped_lock lock(M_mutex_PC_XYZRGB);
-
-	cout << "get_PointCloud_XYZRGB_individual" << endl;
-
-	//image copy ok ?
-	update_img_color_individual();
-	update_img_depth_individual();
-
-	cv::Mat *p_img_color;
-	cv::Mat *p_img_depth;
-
-	M_mutex_img_color.lock();
-	*p_img_color = M_p_img_color->clone();
-	M_mutex_img_color.unlock();
-
-
-	M_mutex_img_depth.lock();
-	*p_img_depth = M_p_img_depth_show->clone();
-	M_mutex_img_depth.unlock();
-
-	//get_img_color_individual(false);
-	//get_img_depth_individual(false);
-
-	////range
-	//{
-	//	for (int v = 0; v < 720; v++)
-	//		for (int u = 0; u < 1280; u++)
-	//		{
-	//			if (v % 100 == 0 && u % 100 == 0)
-	//			{
-	//				//https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0#depth-image-formats
-	//				float pixel_distance_in_meters = M_frames.get_depth_frame().get_distance(u, v);
-	//				cout << "u:" << u << " v:" << v;
-	//				cout << " depth value = " << pixel_distance_in_meters << endl;
-	//			}
-	//		}
-	//}
-
-	union UDEPTH
-	{
-		int value;
-		BYTE data[3];
-	};
-
-	int WIDTH = M_WIDTH;
-	int HEIGHT = M_HEIGHT;
-
-	// allocate point cloud
-	int u, v, n_pixels = WIDTH * HEIGHT;
-	M_p_PointCloud_XYZRGB->clear();
-	M_p_PointCloud_XYZRGB->width = WIDTH;
-	M_p_PointCloud_XYZRGB->height = HEIGHT;
-	M_p_PointCloud_XYZRGB->points.resize(WIDTH * HEIGHT);
-	M_p_PointCloud_XYZRGB->is_dense = false;
-	UDEPTH fbdepth;
-	fbdepth.value = 0;
-	int idxShift = 0; int idx = 0;
-	double x, y, z;
-	M_p_PointCloud_XYZ->clear();
-	M_p_PointCloud_XYZ->points.resize(WIDTH);
-	int nRangeDataIDx = 0;
-	double dist = 0.0;
-
-	for (int j = 0; j < HEIGHT; ++j)
-	{
-		idxShift = j * WIDTH;
-
-		for (int i = 0; i < WIDTH; ++i)
-		{
-			idx = idxShift + i;
-			// read depth data
-			fbdepth.data[0] = p_img_depth->data[idx * 3];
-			fbdepth.data[1] = p_img_depth->data[idx * 3 + 1];
-			fbdepth.data[2] = p_img_depth->data[idx * 3 + 2];
-
-			// compute X, Y coordinates
-			u = idx % WIDTH - WIDTH / 2;
-			v = HEIGHT / 2 - j;
-
-			x = fbdepth.value / 1000.0f;
-			y = -(fbdepth.value / 1000.0f) / (M_FOCAL_LENGTH_FY * 0.001f) * u / 1.0f;
-			z = (fbdepth.value / 1000.0f) / (M_FOCAL_LENGTH_FZ * 0.001f) * v / 1.0f; 
-
-			if (fbdepth.value < M_DEPTHMINVALUE || fbdepth.value > M_DEPTHMAXVALUE)
-			{
-				M_p_PointCloud_XYZRGB->points[idx].x = NULL;
-				M_p_PointCloud_XYZRGB->points[idx].y = NULL;
-				M_p_PointCloud_XYZRGB->points[idx].z = NULL;
-			}
-			else
-			{
-				M_p_PointCloud_XYZRGB->points[idx].x = x;
-				M_p_PointCloud_XYZRGB->points[idx].y = y;
-				M_p_PointCloud_XYZRGB->points[idx].z = z;
-
-				//M_p_PointCloud_XYZRGB->points[idx].b = p_img_color->data[((j * WIDTH) + (i)) * 3];
-				//M_p_PointCloud_XYZRGB->points[idx].g = p_img_color->data[((j * WIDTH) + (i)) * 3 + 1];
-				//M_p_PointCloud_XYZRGB->points[idx].r = p_img_color->data[((j * WIDTH) + (i)) * 3 + 2];
-				M_p_PointCloud_XYZRGB->points[idx].b = 255;
-				M_p_PointCloud_XYZRGB->points[idx].g = 255;
-				M_p_PointCloud_XYZRGB->points[idx].r = 255;
-			}
-		}
-	}
-	idxShift = 0;
 }
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr CRealSenseInterface::get_PointCloud_XYZRGB_calc(cv::Mat *p_img_color, cv::Mat *p_img_depth)
@@ -945,118 +696,4 @@ void CRealSenseInterface::showFrame()
 
 
 	cv::waitKey(1);
-}
-
-void CRealSenseInterface::showFrame_test()
-{
-	bool b_show = false;
-	b_show = true;
-
-	cout << "show test" << endl;
-
-	{
-		boost::mutex::scoped_try_lock lock(M_mutex_img_color);
-		if (lock.owns_lock()) {
-			M_p_img_color->rows;
-			Sleep(10);
-		}
-		else
-		{
-			if (b_show) cout << "try failed" << endl;
-		}
-	}
-
-	{
-		boost::mutex::scoped_try_lock lock(M_mutex_img_depth_show);
-		if (lock.owns_lock()) {
-			M_p_img_depth_show->rows;
-			Sleep(10);
-		}
-		else
-		{
-			if (b_show) cout << "try failed" << endl;
-		}
-	}
-
-	//{
-	//	boost::mutex::scoped_try_lock lock(M_mutex_img_ir_left);
-	//	if (lock.owns_lock()) {
-	//		Sleep(10);
-	//	}
-	//	else
-	//	{
-	//		if (b_show) cout << "try failed" << endl;
-	//	}
-	//}
-
-	//{
-	//	boost::mutex::scoped_try_lock lock(M_mutex_img_ir_right);
-	//	if (lock.owns_lock()) {
-	//		Sleep(10);
-	//	}
-	//	else
-	//	{
-	//		if (b_show) cout << "try failed" << endl;
-	//	}
-
-	//}
-
-}
-
-
-void CRealSenseInterface::showFrame_ir()
-{
-	if (updateFrames())
-	{
-		cout << "debug: 0" << endl;
-		update_img_ir_left_individual();
-		//update_img_ir_right_individual();
-		cout << "debug: 1" << endl;
-
-	}
-
-	cv::waitKey(1);
-
-	//https://hidehiroqt.com/archives/173
-	double ratio_show;
-	//ratio_show = 1.;
-	ratio_show = 0.5;
-	cv::resizeWindow(M_frame_name[2], M_p_img_ir_left->cols* ratio_show, M_p_img_ir_left->rows* ratio_show);
-	//cv::resizeWindow(M_frame_name[3], M_p_img_ir_right->cols* ratio_show, M_p_img_ir_right->rows* ratio_show);
-
-	cv::imshow(M_frame_name[2], *M_p_img_ir_left);
-	//cv::imshow(M_frame_name[3], *M_p_img_ir_right);
-}
-
-void CRealSenseInterface::connect_ir()
-{
-	//M_cfg.enable_stream(RS2_STREAM_INFRARED, 1, 1280, 720, RS2_FORMAT_Y8, 30);//left
-	//M_cfg.enable_stream(RS2_STREAM_INFRARED, 2, 1280, 720, RS2_FORMAT_Y8, 30);//right
-
-	M_cfg.enable_stream(RS2_STREAM_INFRARED, 1280, 720, RS2_FORMAT_Y8, 30);//left
-
-	M_p_img_ir_left = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1, cv::Mat::AUTO_STEP);
-	M_p_img_ir_right = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1, cv::Mat::AUTO_STEP);
-
-	M_frame_name.emplace_back("COLOR");
-	M_frame_name.emplace_back("DEPTH");
-	M_frame_name.emplace_back("IR1_left");
-	M_frame_name.emplace_back("IR2_right");
-
-	//show only
-	//cv::namedWindow(M_frame_name[0], cv::WINDOW_NORMAL);
-	//cv::namedWindow(M_frame_name[1], cv::WINDOW_NORMAL);
-	cv::namedWindow(M_frame_name[2], cv::WINDOW_NORMAL);
-	//cv::namedWindow(M_frame_name[3], cv::WINDOW_NORMAL);
-
-	//M_pipe.start(M_cfg);
-	auto profile = M_pipe.start(M_cfg);
-
-	//auto ir_stream = profile.get_stream(RS2_STREAM_INFRARED).as<rs2::video_stream_profile>();
-	//auto ir_intr = color_stream.get_intrinsics(); // Calibration data
-	//cout << "fx = " << ir_intr.fx << endl;
-	//cout << "fy = " << ir_intr.fy << endl;
-	//cout << "height = " << ir_intr.height << endl;
-	//cout << "width = " << ir_intr.width << endl;
-
 }
