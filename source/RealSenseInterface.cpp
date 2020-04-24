@@ -99,12 +99,14 @@ void CRealSenseInterface::connect()
 	M_frame_name.emplace_back("DEPTH");
 	M_frame_name.emplace_back("IR1_left");
 	M_frame_name.emplace_back("IR2_right");
+	M_frame_name.emplace_back("DEPTH_1ch");
 
 	//show only
 	cv::namedWindow(M_frame_name[0], cv::WINDOW_NORMAL);
 	cv::namedWindow(M_frame_name[1], cv::WINDOW_NORMAL);
-	cv::namedWindow(M_frame_name[2], cv::WINDOW_NORMAL);
-	cv::namedWindow(M_frame_name[3], cv::WINDOW_NORMAL);
+	//cv::namedWindow(M_frame_name[2], cv::WINDOW_NORMAL);
+	//cv::namedWindow(M_frame_name[3], cv::WINDOW_NORMAL);
+	cv::namedWindow(M_frame_name[4], cv::WINDOW_NORMAL);
 
 }
 
@@ -363,20 +365,20 @@ cv::Mat CRealSenseInterface::get_img_depth_calc(rs2::frameset frame, bool b_colo
 {
 	//cout << "get depth image" << endl;
 	rs2::colorizer colorizer;
-
+	
 	//cout << "true = " << true << endl;
 	cout << "b_colorize = " << b_colorize << endl;
 
 	rs2::video_frame frame_data = frame.get_depth_frame();
-	cout << "frame_data size = " << frame_data.get_data_size() << endl;
-	cout << "frame_data height = " << frame_data.get_height() << endl;
-	cout << "frame_data width = " << frame_data.get_width() << endl;
+	//cout << "frame_data size = " << frame_data.get_data_size() << endl;
+	//cout << "frame_data height = " << frame_data.get_height() << endl;
+	//cout << "frame_data width = " << frame_data.get_width() << endl;
 	
 	if(b_colorize)
 		frame_data = frame.get_depth_frame().apply_filter(colorizer);
-	cout << "frame_data size = " << frame_data.get_data_size() << endl;
-	cout << "frame_data height = " << frame_data.get_height() << endl;
-	cout << "frame_data width = " << frame_data.get_width() << endl;
+	//cout << "frame_data size = " << frame_data.get_data_size() << endl;
+	//cout << "frame_data height = " << frame_data.get_height() << endl;
+	//cout << "frame_data width = " << frame_data.get_width() << endl;
 
 
 	cv::Mat img_depth;
@@ -396,9 +398,9 @@ cv::Mat CRealSenseInterface::get_img_depth_calc(rs2::frameset frame, bool b_colo
 			frame_data = aligned_frames.get_depth_frame();
 
 
-		cout << "frame_data size = " << frame_data.get_data_size() << endl;
-		cout << "frame_data height = " << frame_data.get_height() << endl;
-		cout << "frame_data width = " << frame_data.get_width() << endl;
+		//cout << "frame_data size = " << frame_data.get_data_size() << endl;
+		//cout << "frame_data height = " << frame_data.get_height() << endl;
+		//cout << "frame_data width = " << frame_data.get_width() << endl;
 	}
 
 	//if (b_colorize)
@@ -417,11 +419,11 @@ cv::Mat CRealSenseInterface::get_img_depth_calc(rs2::frameset frame, bool b_colo
 	int size_pixel = img_depth.rows * img_depth.cols;
 	cout << "size_pixel = " << size_pixel << endl;
 
-	//if (b_colorize)
+	//for (int i = 0; i < size_pixel; i++)
 	//{
-	//	for (int i = 0; i < size_pixel; i++)
+	//	if (i % 100000 == 0)
 	//	{
-	//		if (i % 100000 == 0)
+	//		if (b_colorize)
 	//		{
 	//			uchar aa, bb, cc;
 	//			aa = img_depth.data[i * 3 + 0];
@@ -433,8 +435,144 @@ cv::Mat CRealSenseInterface::get_img_depth_calc(rs2::frameset frame, bool b_colo
 	//			cout << " " << (int)cc;
 	//			cout << endl;
 	//		}
+	//		//else
+	//		//{
+	//		//	uchar aa, bb;
+	//		//	aa = img_depth.data[i * 2 + 0];
+	//		//	bb = img_depth.data[i * 2 + 1];
+	//		//	cout << "i:" << i;
+	//		//	cout << " " << (int)aa;
+	//		//	cout << " " << (int)bb;
+	//		//	cout << endl;
+	//		//}
 	//	}
 	//}
+
+	if (!b_colorize)
+	{
+		int size_pixel__ = frame_data.get_height() * frame_data.get_width();
+		cout << "size_pixel__ = " << size_pixel__ << endl;
+
+		//distance
+		{
+			//http://weekendproject9.hatenablog.com/entry/2018/08/07/202153
+			rs2::depth_frame depth_point = frame.get_depth_frame();
+			float pixel_distance_in_meters = depth_point.get_distance(M_width_color / 2, M_height_color / 2);
+			cout << "pixel_distance_in_meters:" << pixel_distance_in_meters << endl;
+
+			////cout << "value0(new):" << (int)(((uchar*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 0]) << endl;
+			////cout << "value1(new):" << (int)(((uchar*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 1]) << endl;;
+			////cout << "value0(new):" << (((int*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 0]) << endl;
+			////cout << "value1(new):" << (((int*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 1]) << endl;;
+			//cout << "value0(new):" << (((unsigned int*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 0]) << endl;
+			////cout << "value1(new):" << (((unsigned int*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 1]) << endl;;
+
+			//http://www7b.biglobe.ne.jp/~robe/cpphtml/html02/cpp02041.html
+			//cout << "value0(new):" << (int)(((uchar*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 0]) << endl;
+			auto aabb = static_cast<int>(
+				static_cast<uchar*>((void*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 0]);
+			//auto aabb = static_cast<int>(
+			//	static_cast<int*>((void*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 0]);
+
+			//cout << "value0(new):" << (((unsigned int*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 0]) << endl;
+			
+			cout << "value0(new):" << aabb << endl;
+
+		}
+
+		//for (int i = 0; i < size_pixel__; i++)
+		//{
+		//	if (i % 50000 == 0)
+		//	{
+		//		cout << "i:" << i;
+		//		cout << " value0:" << (int)(((uchar*)frame_data.get_data())[i * 2 + 0]);
+		//		cout << " value1:" << (int)(((uchar*)frame_data.get_data())[i * 2 + 1]);
+		//		//cout << " value0:" << (float)(((uchar*)frame_data.get_data())[i * 2 + 0]);
+		//		//cout << " value1:" << (float)(((uchar*)frame_data.get_data())[i * 2 + 1]);
+		//		//cout << "value:" << (((int*)frame_data.get_data())[i]);
+		//		//cout << " value:" << (((unsigned int*)frame_data.get_data())[i]);
+		//		cout << endl;
+		//	}
+		//}
+
+
+		//cout << "value0:" << (int)(((uchar*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 0]) << endl;
+		//cout << "value1:" << (int)(((uchar*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 1]) << endl;;
+		////cout << "value0:" << (((unsigned int*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 0]) << endl;
+		////cout << "value1:" << (((unsigned int*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 1]) << endl;;
+
+
+		//cout << "get value" << endl;
+
+		int index_depth = 0;
+		//index_depth = 1;
+
+		//auto balue_ = ((char*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + index_depth];
+		////->color iteration occur
+
+		//auto balue_ = ((uchar*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + index_depth];
+		////->color iteration occur
+
+		auto balue_ = (int)((uchar*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + index_depth];
+		//->color iteration occur
+
+		//auto balue_ = ((int*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + index_depth];
+		////->error occur when getting balue_
+
+		//auto balue_ = ((unsigned int*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + index_depth];
+		////->error occur when getting balue_
+
+		//auto balue_ = ((float*)(void*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + index_depth];
+		////->error occur when getting balue_
+
+		//auto balue_ = ((double*)(void*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + index_depth];
+		////->error occur when getting balue_
+
+
+		cout << "balue_ = "<< balue_ << endl;
+
+		cout << "debug:1" << endl;
+		for (int j = 0; j < M_height_color; j++)
+		{
+			//https://qiita.com/hmichu/items/0a399d9e3bbf3a2a4454
+			//fast access to pixel
+			cv::Vec<uchar, 1> *src = img_depth.ptr<cv::Vec<uchar, 1>>(j);
+			for (int i = 0; i < M_width_color; i++)
+			{
+				//start
+				src[i] = ((uchar*)frame_data.get_data())[(j * M_width_color + i) * 2 + index_depth];
+				////src[i] = (((char*)frame_data.get_data())[(j * M_width_color + i) * 2 + index_depth]);
+				////src[i] = (((int*)frame_data.get_data())[(j * M_width_color + i) * 2 + index_depth]);
+				////16 bit (2 bite): unsigned int, int
+
+
+				//if (j % 500 == 0 && i % 500 == 0)
+				//{
+				//	//cout << "value:" << ((char*)frame_data.get_data())[(j * M_width_color + i) * 2 + index_depth] << endl;
+				//	//cout << "value:" << ((uchar*)frame_data.get_data())[(j * M_width_color + i) * 2 + index_depth] << endl;
+				//	//cout << "i:" << i << " j:" << j;
+				//	//((int*)frame_data.get_data())[(j * M_width_color + i) * 2 + index_depth];
+				//	//cout << " value:" << ((int*)frame_data.get_data())[(j * M_width_color + i) * 2 + index_depth] << endl;
+				//	//cout << "value:" << ((unsigned int*)frame_data.get_data())[(j * M_width_color + i) * 2 + index_depth] << endl;
+				//	//cout << "value:" << ((float*)frame_data.get_data())[(j * M_width_color + i) * 2 + index_depth] << endl;//error
+				//
+				//	//cout << "i:" << i << " j:" << j;
+				//	//cout << "balue_ = " << balue_ << endl;
+
+				//}
+
+				//cout << "i:" << i << " j:" << j;
+				//((uchar*)frame_data.get_data())[(M_height_color * M_width_color + M_width_color / 2) * 2 + index_depth];
+
+				////using
+				//src[i] = balue_;
+
+			}
+		}
+
+	}
+
+
 
 	return img_depth;
 }
@@ -658,6 +796,19 @@ void CRealSenseInterface::showFrame()
 	}
 
 	{
+		boost::mutex::scoped_try_lock lock(M_mutex_img_depth);
+		if (lock.owns_lock()) {
+			//cout << "show depth" << endl;
+			*M_p_img_depth_showonly = M_p_img_depth->clone();
+		}
+		else
+		{
+			if (b_show) cout << "try failed" << endl;
+		}
+	}
+
+
+	{
 		boost::mutex::scoped_try_lock lock(M_mutex_img_ir_left);
 		if (lock.owns_lock()) {
 			*M_p_img_ir_left_showonly = M_p_img_ir_left->clone();
@@ -689,11 +840,14 @@ void CRealSenseInterface::showFrame()
 		M_p_img_ir_left_showonly->cols* ratio_show, M_p_img_ir_left_showonly->rows* ratio_show);
 	cv::resizeWindow(M_frame_name[3], 
 		M_p_img_ir_right_showonly->cols* ratio_show, M_p_img_ir_right_showonly->rows* ratio_show);
+	cv::resizeWindow(M_frame_name[4],
+		M_p_img_depth_showonly->cols* ratio_show, M_p_img_depth_showonly->rows* ratio_show);
+
 	cv::imshow(M_frame_name[0], *M_p_img_color_showonly);
 	cv::imshow(M_frame_name[1], *M_p_img_depth_show_showonly);
-	cv::imshow(M_frame_name[2], *M_p_img_ir_left_showonly);
-	cv::imshow(M_frame_name[3], *M_p_img_ir_right_showonly);
-
+	//cv::imshow(M_frame_name[2], *M_p_img_ir_left_showonly);
+	//cv::imshow(M_frame_name[3], *M_p_img_ir_right_showonly);
+	cv::imshow(M_frame_name[4], *M_p_img_depth_showonly);
 
 	cv::waitKey(1);
 }
