@@ -81,8 +81,9 @@ class CRealSenseInterface
 	const static int M_HEIGHT = 720;
 	const static int M_DEPTHMINVALUE = 105; //2700; //[mm]
 	const static int M_DEPTHMAXVALUE = 10000; //2700; //[mm]
-	const static int M_FOCAL_LENGTH_FY = 923912;//fx in RealSense color
-	const static int M_FOCAL_LENGTH_FZ = 924449;//fy in RealSense color
+	//const static int M_FOCAL_LENGTH_FY = 923912;//fx in RealSense color
+	//const static int M_FOCAL_LENGTH_FZ = 924449;//fy in RealSense color
+	int M_FOCAL_LENGTH;
 
 	void thread_start();
 
@@ -111,7 +112,8 @@ public:
 	cv::Mat get_img_depth_calc(rs2::frameset frame, bool b_colorize, bool b_align_to_color_img = true);
 	cv::Mat get_img_ir_left_calc(rs2::frameset frame, bool b_align_to_color_img = true);
 	cv::Mat get_img_ir_right_calc(rs2::frameset frame, bool b_align_to_color_img = true);
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr get_PointCloud_XYZRGB_calc(cv::Mat *p_img_color, cv::Mat *p_img_depth);
+	void get_PointCloud_XYZRGB_calc(pcl::PointCloud<pcl::PointXYZRGB>::Ptr p_cloud,
+		cv::Mat *p_img_color, cv::Mat *p_img_depth);
 
 	// Point Cloud Color Handler
 	boost::shared_ptr<pcl::visualization::PCLVisualizer> m_viewer;				//ëÂè‰ïvÅH

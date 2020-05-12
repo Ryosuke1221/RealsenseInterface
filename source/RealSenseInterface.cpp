@@ -43,20 +43,21 @@ void CRealSenseInterface::connect()
 	cout << "fy = " << depth_intr.fy << endl;
 	cout << "height = " << depth_intr.height << endl;
 	cout << "width = " << depth_intr.width << endl;
+	M_FOCAL_LENGTH = depth_intr.fx;
 
-	auto color_stream = profile.get_stream(RS2_STREAM_COLOR).as<rs2::video_stream_profile>();
-	auto color_intr = color_stream.get_intrinsics(); // Calibration data
-	cout << "fx = " << color_intr.fx << endl;
-	cout << "fy = " << color_intr.fy << endl;
-	cout << "height = " << color_intr.height << endl;
-	cout << "width = " << color_intr.width << endl;
+	//auto color_stream = profile.get_stream(RS2_STREAM_COLOR).as<rs2::video_stream_profile>();
+	//auto color_intr = color_stream.get_intrinsics(); // Calibration data
+	//cout << "fx = " << color_intr.fx << endl;
+	//cout << "fy = " << color_intr.fy << endl;
+	//cout << "height = " << color_intr.height << endl;
+	//cout << "width = " << color_intr.width << endl;
 
-	auto ir_stream = profile.get_stream(RS2_STREAM_INFRARED).as<rs2::video_stream_profile>();
-	auto ir_intr = color_stream.get_intrinsics(); // Calibration data
-	cout << "fx = " << ir_intr.fx << endl;
-	cout << "fy = " << ir_intr.fy << endl;
-	cout << "height = " << ir_intr.height << endl;
-	cout << "width = " << ir_intr.width << endl;
+	//auto ir_stream = profile.get_stream(RS2_STREAM_INFRARED).as<rs2::video_stream_profile>();
+	//auto ir_intr = color_stream.get_intrinsics(); // Calibration data
+	//cout << "fx = " << ir_intr.fx << endl;
+	//cout << "fy = " << ir_intr.fy << endl;
+	//cout << "height = " << ir_intr.height << endl;
+	//cout << "width = " << ir_intr.width << endl;
 
 
 	////https://qiita.com/protocol1964/items/941f52297afb3353d1b7
@@ -77,7 +78,8 @@ void CRealSenseInterface::connect()
 
 	M_p_img_color = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3, cv::Mat::AUTO_STEP);
 	//M_p_img_depth = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3, cv::Mat::AUTO_STEP);
-	M_p_img_depth = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1, cv::Mat::AUTO_STEP);
+	M_p_img_depth = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_16UC1, cv::Mat::AUTO_STEP);
+
 	M_p_img_depth_show = new cv::Mat(cv::Size(M_width_color, M_width_color), CV_8UC3, cv::Mat::AUTO_STEP);
 	//M_p_img_depth_show = new cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3, cv::Scalar(255, 255, 255));
 
@@ -195,8 +197,9 @@ void CRealSenseInterface::doFrames_loop()
 	cout << M_time_.getTimeElapsefrom2Strings(t1, M_time_.getTimeString()) << endl;
 	*M_p_img_depth = get_img_depth_calc(M_frames, false, true);		//don't colorize
 
-
-	//M_p_PointCloud_XYZRGB = get_PointCloud_XYZRGB_calc(M_p_img_color, M_p_img_depth);
+	cout << "point cloud save ";
+	cout << M_time_.getTimeElapsefrom2Strings(t1, M_time_.getTimeString()) << endl;
+	get_PointCloud_XYZRGB_calc(M_p_PointCloud_XYZRGB,M_p_img_color, M_p_img_depth);
 
 	M_mutex_PC_XYZRGB.unlock();
 	M_mutex_PC_XYZ.unlock();
@@ -247,6 +250,7 @@ void CRealSenseInterface::initVisualizer() {
 
 void CRealSenseInterface::show_PointCloud()
 {
+	cout << "show pointcloud start" << endl;
 
 	bool b_show_cout = true;
 	b_show_cout = false;
@@ -367,7 +371,7 @@ cv::Mat CRealSenseInterface::get_img_depth_calc(rs2::frameset frame, bool b_colo
 	rs2::colorizer colorizer;
 	
 	//cout << "true = " << true << endl;
-	cout << "b_colorize = " << b_colorize << endl;
+	//cout << "b_colorize = " << b_colorize << endl;
 
 	rs2::video_frame frame_data = frame.get_depth_frame();
 	//cout << "frame_data size = " << frame_data.get_data_size() << endl;
@@ -380,10 +384,6 @@ cv::Mat CRealSenseInterface::get_img_depth_calc(rs2::frameset frame, bool b_colo
 	//cout << "frame_data height = " << frame_data.get_height() << endl;
 	//cout << "frame_data width = " << frame_data.get_width() << endl;
 
-
-	cv::Mat img_depth;
-
-	//frame_data.get_data
 
 	if (b_align_to_color_img)
 	{
@@ -403,176 +403,28 @@ cv::Mat CRealSenseInterface::get_img_depth_calc(rs2::frameset frame, bool b_colo
 		//cout << "frame_data width = " << frame_data.get_width() << endl;
 	}
 
-	//if (b_colorize)
-	//	img_depth = cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3,
-	//	(void*)frame_data.get_data(), cv::Mat::AUTO_STEP);
-	//else
-	//	img_depth = cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1,
-	//	(void*)frame_data.get_data(), cv::Mat::AUTO_STEP);
+
+	cv::Mat img_depth;
+
 	if (b_colorize)
 		img_depth = cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC3,
 		(void*)frame_data.get_data(), cv::Mat::AUTO_STEP).clone();
 	else
-		img_depth = cv::Mat(cv::Size(M_width_color, M_height_color), CV_8UC1,
-		(void*)frame_data.get_data(), cv::Mat::AUTO_STEP).clone();
-
-	int size_pixel = img_depth.rows * img_depth.cols;
-	cout << "size_pixel = " << size_pixel << endl;
-
-	//for (int i = 0; i < size_pixel; i++)
-	//{
-	//	if (i % 100000 == 0)
-	//	{
-	//		if (b_colorize)
-	//		{
-	//			uchar aa, bb, cc;
-	//			aa = img_depth.data[i * 3 + 0];
-	//			bb = img_depth.data[i * 3 + 1];
-	//			cc = img_depth.data[i * 3 + 2];
-	//			cout << "i:" << i;
-	//			cout << " " << (int)aa;
-	//			cout << " " << (int)bb;
-	//			cout << " " << (int)cc;
-	//			cout << endl;
-	//		}
-	//		//else
-	//		//{
-	//		//	uchar aa, bb;
-	//		//	aa = img_depth.data[i * 2 + 0];
-	//		//	bb = img_depth.data[i * 2 + 1];
-	//		//	cout << "i:" << i;
-	//		//	cout << " " << (int)aa;
-	//		//	cout << " " << (int)bb;
-	//		//	cout << endl;
-	//		//}
-	//	}
-	//}
-
-	if (!b_colorize)
-	{
-		int size_pixel__ = frame_data.get_height() * frame_data.get_width();
-		cout << "size_pixel__ = " << size_pixel__ << endl;
-
-		//distance
-		{
-			//http://weekendproject9.hatenablog.com/entry/2018/08/07/202153
-			rs2::depth_frame depth_point = frame.get_depth_frame();
-			float pixel_distance_in_meters = depth_point.get_distance(M_width_color / 2, M_height_color / 2);
-			cout << "pixel_distance_in_meters:" << pixel_distance_in_meters << endl;
-
-			////cout << "value0(new):" << (int)(((uchar*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 0]) << endl;
-			////cout << "value1(new):" << (int)(((uchar*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 1]) << endl;;
-			////cout << "value0(new):" << (((int*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 0]) << endl;
-			////cout << "value1(new):" << (((int*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 1]) << endl;;
-			//cout << "value0(new):" << (((unsigned int*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 0]) << endl;
-			////cout << "value1(new):" << (((unsigned int*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 1]) << endl;;
-
-			//http://www7b.biglobe.ne.jp/~robe/cpphtml/html02/cpp02041.html
-			//cout << "value0(new):" << (int)(((uchar*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 0]) << endl;
-			auto aabb = static_cast<int>(
-				static_cast<uchar*>((void*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 0]);
-			//auto aabb = static_cast<int>(
-			//	static_cast<int*>((void*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 0]);
-
-			//cout << "value0(new):" << (((unsigned int*)depth_point.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 0]) << endl;
-			
-			cout << "value0(new):" << aabb << endl;
-
-		}
-
-		//for (int i = 0; i < size_pixel__; i++)
-		//{
-		//	if (i % 50000 == 0)
-		//	{
-		//		cout << "i:" << i;
-		//		cout << " value0:" << (int)(((uchar*)frame_data.get_data())[i * 2 + 0]);
-		//		cout << " value1:" << (int)(((uchar*)frame_data.get_data())[i * 2 + 1]);
-		//		//cout << " value0:" << (float)(((uchar*)frame_data.get_data())[i * 2 + 0]);
-		//		//cout << " value1:" << (float)(((uchar*)frame_data.get_data())[i * 2 + 1]);
-		//		//cout << "value:" << (((int*)frame_data.get_data())[i]);
-		//		//cout << " value:" << (((unsigned int*)frame_data.get_data())[i]);
-		//		cout << endl;
-		//	}
-		//}
+		img_depth = cv::Mat(cv::Size(M_width_color, M_height_color), CV_16UC1,
+			const_cast<void*>(frame_data.get_data()), cv::Mat::AUTO_STEP).clone();
 
 
-		//cout << "value0:" << (int)(((uchar*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 0]) << endl;
-		//cout << "value1:" << (int)(((uchar*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 1]) << endl;;
-		////cout << "value0:" << (((unsigned int*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 0]) << endl;
-		////cout << "value1:" << (((unsigned int*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + 1]) << endl;;
+	//int size_pixel = img_depth.rows * img_depth.cols;
+	//cout << "size_pixel = " << size_pixel << endl;
+
+	////http://weekendproject9.hatenablog.com/entry/2018/08/07/202153
+	////get distance
+	//rs2::depth_frame depth_point = frame.get_depth_frame();
+	//float pixel_distance_in_meters = depth_point.get_distance(M_width_color / 2, M_height_color / 2);
 
 
-		//cout << "get value" << endl;
-
-		int index_depth = 0;
-		//index_depth = 1;
-
-		//auto balue_ = ((char*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + index_depth];
-		////->color iteration occur
-
-		//auto balue_ = ((uchar*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + index_depth];
-		////->color iteration occur
-
-		auto balue_ = (int)((uchar*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + index_depth];
-		//->color iteration occur
-
-		//auto balue_ = ((int*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + index_depth];
-		////->error occur when getting balue_
-
-		//auto balue_ = ((unsigned int*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + index_depth];
-		////->error occur when getting balue_
-
-		//auto balue_ = ((float*)(void*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + index_depth];
-		////->error occur when getting balue_
-
-		//auto balue_ = ((double*)(void*)frame_data.get_data())[(M_height_color / 2 * M_width_color + M_width_color / 2) * 2 + index_depth];
-		////->error occur when getting balue_
-
-
-		cout << "balue_ = "<< balue_ << endl;
-
-		cout << "debug:1" << endl;
-		for (int j = 0; j < M_height_color; j++)
-		{
-			//https://qiita.com/hmichu/items/0a399d9e3bbf3a2a4454
-			//fast access to pixel
-			cv::Vec<uchar, 1> *src = img_depth.ptr<cv::Vec<uchar, 1>>(j);
-			for (int i = 0; i < M_width_color; i++)
-			{
-				//start
-				src[i] = ((uchar*)frame_data.get_data())[(j * M_width_color + i) * 2 + index_depth];
-				////src[i] = (((char*)frame_data.get_data())[(j * M_width_color + i) * 2 + index_depth]);
-				////src[i] = (((int*)frame_data.get_data())[(j * M_width_color + i) * 2 + index_depth]);
-				////16 bit (2 bite): unsigned int, int
-
-
-				//if (j % 500 == 0 && i % 500 == 0)
-				//{
-				//	//cout << "value:" << ((char*)frame_data.get_data())[(j * M_width_color + i) * 2 + index_depth] << endl;
-				//	//cout << "value:" << ((uchar*)frame_data.get_data())[(j * M_width_color + i) * 2 + index_depth] << endl;
-				//	//cout << "i:" << i << " j:" << j;
-				//	//((int*)frame_data.get_data())[(j * M_width_color + i) * 2 + index_depth];
-				//	//cout << " value:" << ((int*)frame_data.get_data())[(j * M_width_color + i) * 2 + index_depth] << endl;
-				//	//cout << "value:" << ((unsigned int*)frame_data.get_data())[(j * M_width_color + i) * 2 + index_depth] << endl;
-				//	//cout << "value:" << ((float*)frame_data.get_data())[(j * M_width_color + i) * 2 + index_depth] << endl;//error
-				//
-				//	//cout << "i:" << i << " j:" << j;
-				//	//cout << "balue_ = " << balue_ << endl;
-
-				//}
-
-				//cout << "i:" << i << " j:" << j;
-				//((uchar*)frame_data.get_data())[(M_height_color * M_width_color + M_width_color / 2) * 2 + index_depth];
-
-				////using
-				//src[i] = balue_;
-
-			}
-		}
-
-	}
-
-
+	//https://qiita.com/hmichu/items/0a399d9e3bbf3a2a4454
+	//fast access to pixel
 
 	return img_depth;
 }
@@ -647,114 +499,119 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr CRealSenseInterface::get_PointCloud_XYZRG
 	return M_p_PointCloud_XYZRGB;
 }
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr CRealSenseInterface::get_PointCloud_XYZRGB_calc(cv::Mat *p_img_color, cv::Mat *p_img_depth)
+void CRealSenseInterface::get_PointCloud_XYZRGB_calc(pcl::PointCloud<pcl::PointXYZRGB>::Ptr p_cloud,
+	cv::Mat *p_img_color, cv::Mat *p_img_depth)
 {
-	//cout << "get_PointCloud_XYZRGB_individual" << endl;
-
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr p_PointCloud_XYZRGB;
-
 	int cnt_ = 0;
-
-	cout << "debug2:" << cnt_++ << endl;
 
 	if ((p_img_color->rows != p_img_depth->rows)
 		|| p_img_color->cols != p_img_depth->cols)
 	{
 		cout << "Error: image size is different (PointCloud)" << endl;
-		return p_PointCloud_XYZRGB;
+		return ;
 	}
-	cout << "debug2:" << cnt_++ << endl;
 
-
-	////range
-	//{
-	//	for (int v = 0; v < 720; v++)
-	//		for (int u = 0; u < 1280; u++)
-	//		{
-	//			if (v % 100 == 0 && u % 100 == 0)
-	//			{
-	//				//https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0#depth-image-formats
-	//				float pixel_distance_in_meters = M_frames.get_depth_frame().get_distance(u, v);
-	//				cout << "u:" << u << " v:" << v;
-	//				cout << " depth value = " << pixel_distance_in_meters << endl;
-	//			}
-	//		}
-	//}
-
-	union UDEPTH
+	//range
 	{
-		int value;
-		BYTE data[3];
-	};
+		//for (int v = 0; v < 720; v++)
+		//	for (int u = 0; u < 1280; u++)
+		//	{
+		//		if (v % 100 == 0 && u % 100 == 0)
+		//		{
+		//			//https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0#depth-image-formats
+		//			float pixel_distance_in_meters = M_frames.get_depth_frame().get_distance(u, v);
+		//			cout << "u:" << u << " v:" << v;
+		//			cout << " depth value = " << pixel_distance_in_meters << endl;
+		//		}
+		//	}
+
+		//float pixel_distance_in_meters = M_frames.get_depth_frame().get_distance(p_img_depth->cols / 2, p_img_depth->rows / 2);
+		//cout << "pixel_distance_in_meters = " << pixel_distance_in_meters << endl;
+
+	}
 
 	int WIDTH = M_WIDTH;
 	int HEIGHT = M_HEIGHT;
 
 	// allocate point cloud
-	int u, v, n_pixels = WIDTH * HEIGHT;
-	p_PointCloud_XYZRGB->clear();
-	p_PointCloud_XYZRGB->width = WIDTH;
-	p_PointCloud_XYZRGB->height = HEIGHT;
-	p_PointCloud_XYZRGB->points.resize(WIDTH * HEIGHT);
-	p_PointCloud_XYZRGB->is_dense = false;
-	UDEPTH fbdepth;
-	fbdepth.value = 0;
+	int n_pixels = WIDTH * HEIGHT;
+	p_cloud->clear();
+	p_cloud->width = WIDTH;
+	p_cloud->height = HEIGHT;
+	p_cloud->points.resize(WIDTH * HEIGHT);
+	p_cloud->is_dense = false;
 	int idxShift = 0; int idx = 0;
-	double x, y, z;
-	//M_p_PointCloud_XYZ->clear();
-	//M_p_PointCloud_XYZ->points.resize(WIDTH);
 	int nRangeDataIDx = 0;
 	double dist = 0.0;
 
-	cout << "debug2:" << cnt_++ << endl;
+	//cout << "p_img_depth->at<uchar>(1, 1) = " << p_img_depth->at<uchar>(1, 1) << endl;
+	//cout << "p_img_depth->at<float>(1, 1) = " << p_img_depth->at<float>(1, 1) << endl;
 
+	{
+		//unsigned short x = p_img_depth->at<unsigned short>(p_img_depth->rows - 1, p_img_depth->cols - 1);
+		//unsigned short x = p_img_depth->at<unsigned short>(p_img_depth->rows / 2, p_img_depth->cols / 2);
+		//cout << "x(center):" << x << endl;
+	}
 
 	for (int j = 0; j < HEIGHT; ++j)
 	{
 		idxShift = j * WIDTH;
+		unsigned short *p_value = p_img_depth->ptr<unsigned short>(j);
 
 		for (int i = 0; i < WIDTH; ++i)
 		{
-			idx = idxShift + i;
-			// read depth data
-			fbdepth.data[0] = p_img_depth->data[idx * 3];
-			fbdepth.data[1] = p_img_depth->data[idx * 3 + 1];
-			fbdepth.data[2] = p_img_depth->data[idx * 3 + 2];
+			double x, y, z;
+			int u, v;
 
+			idx = idxShift + i;
 			// compute X, Y coordinates
 			u = idx % WIDTH - WIDTH / 2;
 			v = HEIGHT / 2 - j;
 
-			x = fbdepth.value / 1000.0f;
-			y = -(fbdepth.value / 1000.0f) / (M_FOCAL_LENGTH_FY * 0.001f) * u / 1.0f;
-			z = (fbdepth.value / 1000.0f) / (M_FOCAL_LENGTH_FZ * 0.001f) * v / 1.0f;
+			x = p_value[i] / 1000.0f;
+			y = -(p_value[i] / 1000.0f) / (M_FOCAL_LENGTH) * u / 1.0f;
+			z = (p_value[i] / 1000.0f) / (M_FOCAL_LENGTH) * v / 1.0f;
 
-			if (fbdepth.value < M_DEPTHMINVALUE || fbdepth.value > M_DEPTHMAXVALUE)
+			if (p_value[i] < M_DEPTHMINVALUE || p_value[i] > M_DEPTHMAXVALUE)
 			{
-				p_PointCloud_XYZRGB->points[idx].x = NULL;
-				p_PointCloud_XYZRGB->points[idx].y = NULL;
-				p_PointCloud_XYZRGB->points[idx].z = NULL;
+				p_cloud->points[idx].x = NULL;
+				p_cloud->points[idx].y = NULL;
+				p_cloud->points[idx].z = NULL;
 			}
 			else
 			{
-				p_PointCloud_XYZRGB->points[idx].x = x;
-				p_PointCloud_XYZRGB->points[idx].y = y;
-				p_PointCloud_XYZRGB->points[idx].z = z;
+				p_cloud->points[idx].x = x;
+				p_cloud->points[idx].y = y;
+				p_cloud->points[idx].z = z;
 
-				//p_PointCloud_XYZRGB->points[idx].b = p_img_color->data[((j * WIDTH) + (i)) * 3];
-				//p_PointCloud_XYZRGB->points[idx].g = p_img_color->data[((j * WIDTH) + (i)) * 3 + 1];
-				//p_PointCloud_XYZRGB->points[idx].r = p_img_color->data[((j * WIDTH) + (i)) * 3 + 2];
-				p_PointCloud_XYZRGB->points[idx].b = 255;
-				p_PointCloud_XYZRGB->points[idx].g = 255;
-				p_PointCloud_XYZRGB->points[idx].r = 255;
+				p_cloud->points[idx].b = p_img_color->data[((j * WIDTH) + (i)) * 3];
+				p_cloud->points[idx].g = p_img_color->data[((j * WIDTH) + (i)) * 3 + 1];
+				p_cloud->points[idx].r = p_img_color->data[((j * WIDTH) + (i)) * 3 + 2];
 			}
 		}
 	}
 
-	cout << "debug2:" << cnt_++ << endl;
+	cout << "p_cloud->size() = " << p_cloud->size() << endl;
 
+	//double x_weight = 0.;
+	//double y_weight = 0.;
+	//double z_weight = 0.;
+	//if (p_cloud->size() != 0)
+	//{
+	//	for (size_t i = 0; i < p_cloud->size(); i++)
+	//	{
+	//		x_weight += p_cloud->points[i].x;
+	//		y_weight += p_cloud->points[i].y;
+	//		z_weight += p_cloud->points[i].z;
+	//	}
+	//	x_weight /= p_cloud->size();
+	//	y_weight /= p_cloud->size();
+	//	z_weight /= p_cloud->size();
+	//	cout << "x_weight:" << x_weight << endl;
+	//	cout << "y_weight:" << y_weight << endl;
+	//	cout << "z_weight:" << z_weight << endl;
+	//}
 
-	return p_PointCloud_XYZRGB;
 }
 
 void CRealSenseInterface::showFrame()

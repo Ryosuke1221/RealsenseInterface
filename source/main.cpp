@@ -51,17 +51,23 @@ int main() try
 {
 
 	CRealSenseInterface rs_int;
+	rs_int.initVisualizer();
 	//rs_int.connect();
 	rs_int.connect_thread();
 
 	//Sleep(0.5 * 1000);
 
-	while (1)
-	{
-		//rs_int.doFrames_loop();
-		rs_int.showFrame();
-		//rs_int.showFrame_test();
-	}
+	rs_int.show_PointCloud();
+
+	//Sleep(30 * 1000);
+
+
+	//while (1)
+	//{
+	//	//rs_int.doFrames_loop();
+	//	rs_int.showFrame();
+	//	//rs_int.showFrame_test();
+	//}
 
 	rs_int.disconnect();
 
